@@ -1,0 +1,12 @@
+[submodule "deps/simnets"]
+	path = deps/simnets
+	url = https://github.com/HUJI-Deep/caffe-simnets
+[submodule "deps/GSN"]
+	path = deps/GSN
+	url = https://github.com/HUJI-Deep/GSN
+[submodule "deps/nice"]
+	path = deps/nice
+	url = https://github.com/HUJI-Deep/nice
+[submodule "deps/DPM"]
+	path = deps/DPM
+	url = https://github.com/HUJI-Deep/Diffusion-Probabilistic-Models

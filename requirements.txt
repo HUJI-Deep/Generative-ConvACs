@@ -1,0 +1,4 @@
+requests>=2.4.1
+progressbar>=2.3
+numpy>=1.11.1
+scipy>=0.18.0

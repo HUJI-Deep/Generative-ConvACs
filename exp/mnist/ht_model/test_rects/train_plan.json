@@ -1,0 +1,124 @@
+{
+    "name": "ht_model/test_rects",
+    "search_type": "grid",
+    "weights_file": "../train/ht_model_train_1_iter_25000.caffemodel",
+    "rendering_engine": true,
+    "termination_rules": {
+      "nan": true
+    },
+    "hyper_params": [
+        {
+            "name": "num_rects",
+            "type": "preset",
+            "values": [1,2,3]
+        },
+        {
+            "name": "rect_width",
+            "type": "preset",
+            "values": [8,12,16]
+        },
+        {
+            "name": "batch_size",
+            "type": "preset",
+            "values": [8]
+        },
+        {
+            "name": "base_lr",
+            "type": "preset",
+            "values": [0.03]
+        },
+        {
+            "name": "likelihood_loss_weight",
+            "type": "preset",
+            "values": [1]
+        },
+        {
+            "name": "out_of_bounds_value",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "momentum",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "momentum2",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "rm_prob",
+            "type": "preset",
+            "values": [1]
+        },
+        ### Architectural Parameters ###
+        {
+            "name": "sim1_num_instances",
+            "type": "preset",
+            "values": [32]
+        },
+        {
+            "name": "lv1_num_instances",
+            "type": "preset",
+            "values": [64]
+        },
+        {
+            "name": "lv2_num_instances",
+            "type": "preset",
+            "values": [128]
+        },
+        {
+            "name": "lv3_num_instances",
+            "type": "preset",
+            "values": [256]
+        },
+        {
+            "name": "lv4_num_instances",
+            "type": "preset",
+            "values": [512]
+        },
+        {
+            "name": "projected_offsets",
+            "type": "preset",
+            "values": [false]
+        },
+        ### Learning Parameters ###
+        {
+            "name": "sim_templates_lr",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "sim_weights_lr",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "sim_weight_decay",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "mex_offsets_lr",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "weight_decay",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "solver_type",
+            "type": "preset",
+            "values": ["Adam"]
+        },
+        {
+            "name": "max_iter",
+            "type": "preset",
+            "values": [1]
+        }
+    ]
+}
+
