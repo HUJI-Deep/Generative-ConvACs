@@ -1,0 +1,622 @@
+{% macro sim_layer(name, bottom, top, num_instances, block_size, padding=0, stride=1, input_channels=3, param_name=None) %}
+     layer {
+        name: "{{ name }}"
+        type: "Similarity"
+        bottom: "{{ bottom }}"
+        top: "{{ top }}"
+        param {
+            lr_mult: {{ sim_templates_lr | float }}
+            decay_mult: 0
+            {% if param_name %}
+            name: "{{ param_name ~ '_templates'}}"
+            {% endif %}
+        }
+        param {
+            lr_mult: {{ sim_weights_lr | float }}
+            min_value: 0
+            decay_mult: {{ sim_weight_decay | float }}
+            {% if param_name %}
+            name: "{{ param_name ~ '_weights'}}"
+            {% endif %}
+        }
+        similarity_param {
+            similarity_function: L2
+            num_instances: {{ num_instances | int }} 
+            bias_term: false
+            normalization_term: true
+            normalization_term_fudge: 1e-4
+            ignore_nan_input: true
+            block_param {
+                block_size: {{ block_size | int }}
+                pad: {{ padding | int }}
+                stride: {{ stride | int }}
+                out_of_bounds_value: nan
+            }
+            template_filler {
+                type: "gaussian"
+                mean: 0
+                std: 0.05
+            }
+            weight_filler {
+                type: "gaussian"
+                mean: 1
+                std: 0.05
+            }
+        }
+    }
+{% endmacro %}
+{% macro mex_layer(name, bottom, top, num_instances, input_channels, use_unshared, region_size, filler_alpha=1.0, param_name=None) %}
+    layer {
+        name: "{{ name }}"
+        type: "MEX"
+        bottom: "{{ bottom }}"
+        top: "{{ top }}"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: {{ mex_offsets_lr | float }}
+            decay_mult: 1
+            is_logspace: true
+            {% if param_name %}
+            name: "{{ param_name ~ '_offsets'}}"
+            {% endif %}
+        }
+        mex_param {
+            num_instances: {{ num_instances | int }}
+            softmax_mode: true
+            normalize_offsets: true
+            normalize_offsets_projected: {{ projected_offsets | bool }}
+            use_unshared_regions: {{ use_unshared | bool }}
+            {% if use_unshared -%}
+            unshared_offsets_region_size: {{ region_size | int }}
+            {% else -%}
+            shared_offsets_region_size: {{ region_size | int }}
+            {%- endif %}
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "dirichlet"
+                alpha: {{ filler_alpha }}
+                primal_dim: {{ input_channels | int }}
+                to_log: true
+            }
+        }
+    }
+{% endmacro %}
+
+{% macro mexpool_layer(name, bottom, top, num_instances, input_channels, use_unshared, shared_region_size, pool_size, pad=0, param_name=None) -%}
+{{ mex_layer(name ~ '_mex', bottom, name ~ '_mex', num_instances, input_channels, use_unshared, shared_region_size, param_name=param_name) }}
+{{  pooling_layer(name ~ '_pool', name ~ '_mex', top, size=pool_size, stride=pool_size, pad=pad) }}
+{%- endmacro %}
+
+{% macro mexpool_normed_layer(name, bottom, top, num_instances, input_channels, use_unshared, shared_region_size, pool_size, pad=0, bottom_norm=None, top_norm=None, param_name=None) -%}
+{{ norm_layer(name ~ '_norm', bottom, name ~ '_normalized', name ~ '_norm', input_channels) }}
+{{ mexpool_layer(name, name ~ '_normalized', (name ~ '_shifted') if top_norm == None else top, num_instances, input_channels, use_unshared, shared_region_size, pool_size, pad, param_name=param_name) }}
+    layer {
+        name: "{{ name ~ '_post_norm' }}"
+        type: "Pooling"
+        bottom: "{{ name ~ '_norm' }}"
+{% if bottom_norm != None %}
+        top: "{{ name ~ '_original_post_norm' }}"
+{% else %}
+        top: "{{ name ~ '_post_norm' if top_norm == None else top_norm }}"
+{% endif %}
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: {{ pool_size | int }}
+            stride: {{ pool_size | int }}
+            pad: {{ pad | int }}
+        }
+    }
+{% if bottom_norm != None %}
+    layer {
+        name: "{{ name ~ '_post_norm' }}"
+        type: "Pooling"
+        bottom: "{{ bottom_norm }}"
+        top: "{{ name ~ '_bottom_post_norm' }}"
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: {{ pool_size | int }}
+            stride: {{ pool_size | int }}
+            pad: {{ pad | int }}
+        }
+    }
+{% endif %}
+{% if bottom_norm != None %}
+    layer {
+        name: "{{ name ~ '_combined_post_norm' }}"
+        type: "Eltwise"
+        bottom: "{{ name ~ '_original_post_norm' }}"
+        bottom: "{{ name ~ '_bottom_post_norm' }}"
+        top: "{{ name ~ '_post_norm' if top_norm == None else top_norm }}"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: 1
+        }
+    }
+{% endif %}
+{% if top_norm == None %}
+    layer {
+        name: "{{ name ~ '_post_norm_tile' }}"
+        type: "Tile"
+        bottom: "{{ name ~ '_post_norm' }}"
+        top: "{{ name ~ '_post_norm_tile' }}"
+        tile_param{
+            axis: 1
+            tiles: {{ num_instances }}
+        }
+    }
+    layer {
+        name: "{{ name ~ '_denormalized' }}"
+        type: "Eltwise"
+        bottom: "{{ name ~ '_shifted' }}"
+        bottom: "{{ name ~ '_post_norm_tile' }}"
+        top: "{{ top }}"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: 1
+        }
+    }
+{% endif %}
+{% endmacro %}
+{% macro norm_layer(name, bottom, top, top_norm, input_channels) %}
+    layer {
+        name: "{{ name }}"
+        type: "MEX"
+        bottom: "{{ bottom }}"
+        top: "{{ top_norm }}"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        mex_param {
+            num_instances: 1
+            softmax_mode: true
+            normalize_offsets: false
+            shared_offsets_region_size: -1
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "constant"
+                value: 0
+            }
+        }
+    }
+    layer {
+        name: "{{ name ~ '_norm_tile' }}"
+        type: "Tile"
+        bottom: "{{ top_norm }}"
+        top: "{{ name ~ '_norm_tile' }}"
+        tile_param{
+            axis: 1
+            tiles: {{ input_channels }}
+        }
+    }
+    layer {
+        name: "{{ name ~ '_normalized' }}"
+        type: "Eltwise"
+        bottom: "{{ bottom }}"
+        bottom: "{{ name ~ '_norm_tile' }}"
+        top: "{{ top }}"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: -1
+        }
+    }
+{% endmacro %}
+{% macro pooling_layer(name, bottom, top, size=2, stride=2, pad=0, type='SUM', global_pooling=False) %}
+    layer {
+        name: "{{ name }}"
+        type: "Pooling"
+        bottom: "{{ bottom }}"
+        top: "{{ top }}"
+        pooling_param {
+            pool: {{ type }}
+            {% if global_pooling -%}
+            global_pooling: true
+            {% else -%}
+            kernel_size: {{ size | int }}
+            stride: {{ stride | int }}
+            pad: {{ pad | int }}
+            {%- endif %}
+            engine: CAFFE
+        }
+    }
+{%- endmacro %}
+{% macro random_marginalize_layer(name, bottom, top, prob_of_keeping, window_size, input_channels, bottom_norm=None, top_norm=None, to_nan=False) %}
+    layer {
+        name: "{{ name ~ '_margin_mask' }}"
+        type: "DummyData"
+        top: "{{ name ~ '_margin_mask' }}"
+        dummy_data_param {
+            data_filler {
+                type: "bernoulli"
+                non_zero_probability: {{ prob_of_keeping }}
+            }
+            shape {
+                dim: {{ batch_size | int }}
+                dim: 1
+                dim: {{ window_size | int }}
+                dim: {{ window_size | int }}
+            }
+        }
+        include {
+            phase: TRAIN
+        }
+    }
+    layer {
+        name: "{{ name ~ '_margin_mask' }}"
+        type: "DummyData"
+        top: "{{ name ~ '_margin_mask' }}"
+        dummy_data_param {
+            data_filler {
+                type: "constant"
+                value: 1
+            }
+            shape {
+                dim: 100
+                dim: 1
+                dim: {{ window_size | int }}
+                dim: {{ window_size | int }}
+            }
+        }
+        include {
+            phase: TEST
+        }
+    }
+
+    layer {
+        name: "{{ name ~ '_to_nan' }}"
+        type: "Power"
+        bottom: "{{ name ~ '_margin_mask' }}"
+        top: "{{ name ~ '_margin_mask_corrected' }}"
+        power_param{
+        {% if to_nan %}
+            shift: -1
+            power: 0.5
+        {% endif %}
+        }
+    }
+    layer {
+        name: "{{ name ~ '_mask_tile' }}"
+        type: "Tile"
+        bottom: "{{ name ~ '_margin_mask_corrected' }}"
+        top: "{{ name ~ '_margin_tile' }}"
+        tile_param{
+            axis: 1
+            tiles: {{ input_channels }}
+        }
+    }
+    layer {
+        name: "{{ name ~ '_marginalize' }}"
+        type: "Eltwise"
+        bottom: "{{ bottom }}"
+        bottom: "{{ name ~ '_margin_tile' }}"
+        top: "{{ top }}"
+        eltwise_param{
+{% if to_nan %}
+            operation: SUM
+            coeff: 1
+            coeff: 1
+{% else %}
+            operation: PROD
+{% endif %}
+        }
+    }
+{% if bottom_norm != None and top_norm != None %}
+    layer {
+        name: "{{ name ~ '_marginalize_norm' }}"
+        type: "Eltwise"
+        bottom: "{{ bottom_norm }}"
+        bottom: "{{ name ~ '_margin_mask' }}"
+        top: "{{ top_norm }}"
+        eltwise_param{
+            operation: PROD
+        }
+    }
+{% endif %}
+{%- endmacro %}
+{% macro concat_layer(name, bottoms) %}
+    layer {
+        name: "{{ name }}"
+        type: "Concat"
+        {% for bottom in bottoms -%}
+        bottom: "{{ bottom }}"
+        {% endfor %}
+        top: "{{ name }}"
+    }
+{%- endmacro %}
+{% macro ll_loss_layer(name, bottom, weight, use_labeled_data=True) %}
+    layer {
+        name: "{{ name }}"
+        type: "LogLikelihoodLoss"
+        log_likelihood_loss_param {
+           use_labeled_data: {{ use_labeled_data | bool }}
+        }
+        loss_weight: {{ weight }}
+        bottom: "{{ bottom }}"
+        bottom: "label"
+        top: "{{ name }}"
+    }
+{%- endmacro %}
+{% macro ll_side_loss(name, bottom, weight, use_labeled_data=True,shared_offsets=-1) %}
+{% if weight > 0 -%}
+    layer {
+        name: "{{ name ~ '_mex' }}"
+        type: "MEX"
+        bottom: "{{ bottom }}"
+        top: "{{ name ~ '_mex' }}"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 1
+            decay_mult: 0
+        }
+        mex_param {
+            num_instances: 1
+            softmax_mode: true
+            normalize_offsets: true
+            shared_offsets_region_size: {{ shared_offsets | int }}
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "constant"
+                value: 0
+            }
+        }
+    }
+    {{ pooling_layer(name ~ '_pooling', name ~ '_mex', name ~ '_pooling', global_pooling=True) }}
+    layer {
+        name: "{{ name ~ '_loss' }}"
+        type: "SumLoss"
+        sum_loss_param {
+           use_labeled_data: {{ use_labeled_data | bool }}
+        }
+        loss_weight: {{ weight }}
+        bottom: "{{ name ~ '_pooling' }}"
+        bottom: "label"
+        top: "{{ name ~ '_loss' }}"
+    }
+{%- endif %}
+{%- endmacro %}
+{% macro input(name, path, batch_size, add_mask, is_train, stage=None) %}
+   layer {
+        name: "{{ name }}_labeled"
+        type: "ImageData"
+        top: "data"
+        top: "label"
+        image_data_param {
+            source: "data/{{ path }}/index.txt"
+            root_folder: "data/{{ path }}/"
+            batch_size: {{ batch_size | int }}
+            shuffle: false
+            is_color: false
+        }
+        transform_param {
+            scale: 0.003921569
+            mean_value: 127.5
+        }
+        include: { 
+            phase: {{ 'TRAIN' if is_train else 'TEST' }}
+            {{ ('stage: "%s"' | format(stage)) if stage }}
+        }
+    }
+{% if add_mask %}
+   layer {
+        name: "{{ name }}_mask"
+        type: "ImageData"
+        top: "mask"
+        top: "junk_label"
+        image_data_param {
+            source: "data/{{ path }}/index_mask.txt"
+            root_folder: "data/{{ path }}/"
+            batch_size: {{ batch_size | int }}
+            shuffle: false
+            is_color: false
+        }
+        transform_param {
+          scale: 0.00390625
+        }
+        include: {
+            phase: {{ 'TRAIN' if is_train else 'TEST' }}
+            {{ ('stage: "%s"' | format(stage)) if stage }}
+        }
+    }
+    layer {
+        name: "{{ name }}_silence"
+        type: "Silence"
+        bottom: "junk_label"
+        include: {
+           phase: {{ 'TRAIN' if is_train else 'TEST' }}
+           {{ ('stage: "%s"' | format(stage)) if stage }}
+        }
+    }
+{% else %}
+    layer {
+        name: "{{ name }}_dummy"
+        type: "DummyData"
+        top: "mask"
+        dummy_data_param {
+            data_filler {
+              type: "constant"
+              value: 0
+            }
+            shape {
+              dim: {{ batch_size }}
+              dim: 1
+              dim: 28
+              dim: 28
+            }
+        }
+        include: {
+           phase: {{ 'TRAIN' if is_train else 'TEST' }}
+           {{ ('stage: "%s"' | format(stage)) if stage }}
+        }
+    }
+{% endif %}
+{% endmacro %}
+{# END OF MACRO DECLARATION #}
+# Number of iterations between tests
+test_interval: 1000
+# Covering the full 10,000 testing and 40,000 training images.
+test_iter: 100
+test_state: { stage: "test-on-test-set" }
+# Unsupervised test settings
+init_test_interval: 0 # How many iterations between each test
+init_test_iter: 625   # number of batches per test - 625*64=40000
+# The base learning rate, momentum and the weight decay of the network.
+base_lr: {{ base_lr }}
+momentum: {{ momentum }}
+momentum2: {{ momentum2 }}
+weight_decay: {{ weight_decay }}
+# The learning rate policy
+lr_policy: "multistep"
+stepvalue: {{ (max_iter * 0.8) | int }}
+gamma: 0.1
+# Number of iterations between displays
+display: 20
+# The maximum number of iterations
+max_iter: {{ max_iter | int }}
+# snapshot intermediate results
+snapshot: 5000
+snapshot_prefix: "{{ name }}"
+snapshot_after_train: false
+# solver mode: CPU or GPU
+solver_mode: GPU
+type: "{{ solver_type }}"
+debug_info: false
+debug_info_test_nets: false
+
+net_param {
+    name: "{{ name }}"
+    ##############
+    ### Source ###
+    ##############
+{{ input('mnist_train', 'mnist_whole_train_image_data', batch_size, is_train=True, stage=None) }}
+{% if mar_prob > 0 %}
+{{ input('mnist_test_test', ('mnist_test_image_data_mar_%.2f' | format(mar_prob)), 100, add_mask=True, is_train=False, stage='test-on-test-set') }}
+{% else %}
+{{ input('mnist_test_test', 'mnist_test_image_data', 100, add_mask=False, is_train=False, stage='test-on-test-set') }}
+{% endif %}
+    layer {
+        name: "to_nan"
+        type: "Power"
+        bottom: "mask"
+        top: "nan_mask"
+        power_param{
+            scale: -1
+            power: 0.5
+        }
+    }
+    layer {
+        name: "marginalize"
+        type: "Eltwise"
+        bottom: "data"
+        bottom: "nan_mask"
+        top: "data_marg"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: 1
+        }
+    }
+{% for x in [0,1,-1] %}
+{% for y in [0,1,-1] %}
+{% set postfix = (('_x_%d_y_%d' | format(x, y)) if x != 0 or y != 0 else '') %}
+    layer {
+        name: "translation{{ postfix }}"
+        type: "Translation"
+        bottom: "data_marg"
+        top: "data_marg{{ postfix }}"
+        translation_param{
+            shift_x: {{ x }}
+            shift_y: {{ y }}
+            out_of_bounds_value: nan
+        }
+    }
+{{ random_marginalize_layer('rm0' ~  postfix, 'data_marg' ~  postfix, 'rm0' ~  postfix, 1, 28, 1, to_nan=True) }}
+{{ sim_layer('sim1' ~  postfix, 'rm0' ~  postfix, 'sim1' ~  postfix, sim1_num_instances, sim1_template_size, padding=sim1_pad, stride=sim1_template_size, input_channels=1, param_name='sim1') }}
+{{ random_marginalize_layer('rm1' ~  postfix, 'sim1' ~  postfix, 'rm1' ~  postfix, 1, 8, sim1_num_instances, to_nan=False) }}
+{{ mexpool_normed_layer('mex1' ~  postfix, 'rm1' ~  postfix, 'mex1' ~  postfix, mex1_num_instances, sim1_num_instances, use_unshared=False, shared_region_size=1, pool_size=( (28+(2*sim1_pad)) / sim1_template_size), pad=0, bottom_norm=None, top_norm=None, param_name='mex1') }}
+
+{# Equivalent to CP-model with identity MEX layer after the first MEX layer (mex1), this was found to work
+slightly better in practice. #}
+
+{{ pooling_layer('global_sum_pool' ~  postfix, 'mex1' ~  postfix, 'final_layer' ~  postfix, global_pooling=True) }}
+
+
+{% endfor %}
+{% endfor %}
+    ############
+    ### Sink ###
+    ############
+    layer {
+        name: "average_score"
+        type: "Eltwise"
+{% for x in [0,1,-1] %}
+{% for y in [0,1,-1] %}
+        {% if x == 0 and y == 0 %}
+        bottom: "final_layer"
+        {% else %}
+        bottom: "final_layer{{ '_x_%d_y_%d' | format(x, y) }}"
+        {% endif %}
+{% endfor %}
+{% endfor %}
+        top: "average_score"
+        eltwise_param{
+            operation: SUM
+{% for x in [0,1,-1] %}
+{% for y in [0,1,-1] %}
+            coeff: 1 # {{ (2 - (x | abs)) * (2 - (y | abs)) }}
+{% endfor %}
+{% endfor %}
+        }
+    }
+    layer {
+        name: "accuracy"
+        type: "Accuracy"
+        bottom: "average_score"
+        bottom: "label"
+        top: "accuracy"
+        include: { phase: TEST }
+    }
+    layer {
+        name: "silence_all"
+        type: "Silence"
+        bottom: "average_score"
+        bottom: "label"
+        include: { phase: TRAIN }
+    }
+}
+

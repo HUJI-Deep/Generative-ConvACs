@@ -1,0 +1,17 @@
+{
+    "name": "cp_model/train/init",
+    "search_type": "grid",
+    "rendering_engine": true,
+    "termination_rules": {
+      "nan": true
+    },
+    "hyper_params": [
+        ### Architectural Parameters ###
+        {
+            "name": "sim1_num_instances",
+            "type": "preset",
+            "values": [800]
+        }
+    ]
+}
+
