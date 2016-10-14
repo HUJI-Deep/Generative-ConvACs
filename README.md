@@ -1,10 +1,10 @@
 # Tensorial Mixture Models
-This repository contains the scripts used to reproduce the experiments from the article [Tensorial Mixture Models](http://drop.sharir.org/articles/tmm/tmm_arxiv_v1.pdf). At the moment some of the experiments are missing, but we will add them in the coming weeks. If you are using this code in your article, or want to reference our results, please cite our article:
+This repository contains the scripts used to reproduce the experiments from the article [Tensorial Mixture Models](https://arxiv.org/abs/1610.04167). At the moment some of the experiments are missing, but we will add them in the coming weeks. If you are using this code in your article, or want to reference our results, please cite our article:
 
 ```
 @article{sharir2016TMM,
   Author = {Sharir, Or and Tamari, Ronen and Cohen, Nadav and Shashua, Amnon},
-  Journal = {arXiv preprint arXiv:1610.xxxx}, % Waiting for final arXiv identifier.
+  Journal = {arXiv preprint arXiv:1610.04167},
   Title = {Tensorial Mixture Models},
   Year = {2016}
 }
