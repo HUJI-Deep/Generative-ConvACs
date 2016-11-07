@@ -41,8 +41,8 @@ def corrupt_image(img, MAR_prob=0, min_rects=0, max_rects=0, min_width=0, max_wi
         for i in range(num_rects):
             px1 = random_integers(0, w - min(max(min_width, 1), w))
             py1 = random_integers(0, h - min(max(min_width, 1), h))
-            px2 = px1 + (min_width - 1) + random_integers(0, max(min(w - px1 - min_width, max_width - min_width), 0));
-            py2 = py1 + (min_width - 1) + random_integers(0, max(min(h - py1 - min_width, max_width - min_width), 0));
+            px2 = px1 + min_width + random_integers(0, max(min(w - px1 - min_width, max_width - min_width), 0));
+            py2 = py1 + min_width + random_integers(0, max(min(h - py1 - min_width, max_width - min_width), 0));
             if px1 <= px2 and py1 <= py2:
                 mask[py1:py2, px1:px2] = True
             else:
