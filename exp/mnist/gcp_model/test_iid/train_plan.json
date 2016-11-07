@@ -1,21 +1,16 @@
 {
-    "name": "ht_model/test_rects",
+    "name": "gcp_model/test_iid",
     "search_type": "grid",
-    "weights_file": "../train/ht_model_train_1_iter_25000.caffemodel",
+    "weights_file": "../train/gcp_model_train_1_iter_25000.caffemodel",
     "rendering_engine": true,
     "termination_rules": {
       "nan": true
     },
     "hyper_params": [
         {
-            "name": "num_rects",
+            "name": "mar_prob",
             "type": "preset",
-            "values": [1,2,3]
-        },
-        {
-            "name": "rect_width",
-            "type": "preset",
-            "values": [8,12,16]
+            "values": [0, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
         },
         {
             "name": "batch_size",
@@ -54,29 +49,24 @@
         },
         ### Architectural Parameters ###
         {
+            "name": "sim1_template_size",
+            "type": "preset",
+            "values": [4]
+        },
+        {
+            "name": "sim1_pad",
+            "type": "preset",
+            "values": [2]
+        },
+        {
             "name": "sim1_num_instances",
             "type": "preset",
-            "values": [32]
+            "values": [800]
         },
         {
-            "name": "lv1_num_instances",
+            "name": "mex1_num_instances",
             "type": "preset",
-            "values": [64]
-        },
-        {
-            "name": "lv2_num_instances",
-            "type": "preset",
-            "values": [128]
-        },
-        {
-            "name": "lv3_num_instances",
-            "type": "preset",
-            "values": [256]
-        },
-        {
-            "name": "lv4_num_instances",
-            "type": "preset",
-            "values": [512]
+            "values": [10]
         },
         {
             "name": "projected_offsets",

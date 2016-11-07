@@ -1,7 +1,7 @@
 {
-    "name": "cp_model/test_rects",
+    "name": "gcp_model/test_rects",
     "search_type": "grid",
-    "weights_file": "../train/cp_model_train_1_iter_25000.caffemodel",
+    "weights_file": "../train/gcp_model_train_1_iter_25000.caffemodel",
     "rendering_engine": true,
     "termination_rules": {
       "nan": true
@@ -15,7 +15,7 @@
         {
             "name": "rect_width",
             "type": "preset",
-            "values": [8,12,16]
+            "values": [7,11,15]
         },
         {
             "name": "batch_size",

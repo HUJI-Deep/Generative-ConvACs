@@ -1,5 +1,5 @@
 {
-    "name": "ht_model/train/init",
+    "name": "ght_model/train/init",
     "search_type": "grid",
     "rendering_engine": true,
     "termination_rules": {

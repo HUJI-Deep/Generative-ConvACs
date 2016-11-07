@@ -1,21 +1,28 @@
 {
-    "name": "cp_model/test_iid",
+    "name": "gcp_model/train",
     "search_type": "grid",
-    "weights_file": "../train/cp_model_train_1_iter_25000.caffemodel",
     "rendering_engine": true,
+    "weights_file": "init/gcp_model_train_init_1_iter_1.caffemodel",
     "termination_rules": {
       "nan": true
     },
     "hyper_params": [
         {
-            "name": "mar_prob",
+            "name": "seed",
             "type": "preset",
-            "values": [0, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
+            "values": ["54879421"]
+        },
+        {
+            "name": "number_of_gpus",
+            "type": "preset",
+            # Change to number of available GPUs on system!
+            # Affects the effective batch size used during training.
+            "values": [1]
         },
         {
             "name": "batch_size",
             "type": "preset",
-            "values": [8]
+            "values": [128]
         },
         {
             "name": "base_lr",
@@ -25,27 +32,37 @@
         {
             "name": "likelihood_loss_weight",
             "type": "preset",
-            "values": [1]
-        },
-        {
-            "name": "out_of_bounds_value",
-            "type": "preset",
-            "values": [0]
+            "values": [0.1]
         },
         {
             "name": "momentum",
             "type": "preset",
-            "values": [0]
+            "values": [0.975]
         },
         {
             "name": "momentum2",
             "type": "preset",
-            "values": [0]
+            "values": [0.999]
         },
         {
-            "name": "rm_prob",
+            "name": "rm_prob0",
             "type": "preset",
-            "values": [1]
+            "values": [0.5]
+        },
+        {
+            "name": "rm_prob1",
+            "type": "preset",
+            "values": [0.5]
+        },
+        {
+            "name": "rm_active0",
+            "type": "preset",
+            "values": [true]
+        },
+        {
+            "name": "rm_active1",
+            "type": "preset",
+            "values": [false]
         },
         ### Architectural Parameters ###
         {
@@ -69,9 +86,24 @@
             "values": [10]
         },
         {
+            "name": "linear_min_value",
+            "type": "preset",
+            "values": [1e-8]
+        },
+        {
+            "name": "log_space",
+            "type": "preset",
+            "values": [true]
+        },
+        {
             "name": "projected_offsets",
             "type": "preset",
             "values": [false]
+        },
+        {
+            "name": "shared_region_size",
+            "type": "preset",
+            "values": [1]
         },
         ### Learning Parameters ###
         {
@@ -92,22 +124,27 @@
         {
             "name": "mex_offsets_lr",
             "type": "preset",
-            "values": [0]
+            "values": [1]
         },
         {
             "name": "weight_decay",
             "type": "preset",
-            "values": [0]
+            "values": [1e-2]
         },
         {
             "name": "solver_type",
             "type": "preset",
-            "values": ["Adam"]
+            "values": ["Nadam"]
+        },
+        {
+            "name": "delta",
+            "type": "preset",
+            "values": [1e-16]
         },
         {
             "name": "max_iter",
             "type": "preset",
-            "values": [1]
+            "values": [25000]
         }
     ]
 }

@@ -5,7 +5,7 @@ train_dir = os.path.dirname(os.path.realpath(__file__))
 enclosed_dir = os.path.normpath(os.path.join(train_dir, '../../'))
 caffe_dir = os.path.abspath(os.path.join(train_dir, '../../../../deps/simnets'))
 
-if not os.path.isfile(os.path.join(train_dir, '../train/ht_model_train_1_iter_25000.caffemodel')):
+if not os.path.isfile(os.path.join(train_dir, '../train/ght_model_train_1_iter_25000.caffemodel')):
     print 'Cannot find pretrained model. You must either train the model first or download a readymade model.'
     sys.exit(-1)
 subprocess.check_call('%s/generate_mnist_missing_data.py' % enclosed_dir, shell=True)

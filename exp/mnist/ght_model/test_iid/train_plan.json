@@ -1,7 +1,7 @@
 {
-    "name": "ht_model/test_iid",
+    "name": "ght_model/test_iid",
     "search_type": "grid",
-    "weights_file": "../train/ht_model_train_1_iter_25000.caffemodel",
+    "weights_file": "../train/ght_model_train_1_iter_25000.caffemodel",
     "rendering_engine": true,
     "termination_rules": {
       "nan": true

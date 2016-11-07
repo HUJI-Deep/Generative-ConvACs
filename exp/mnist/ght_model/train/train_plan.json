@@ -1,8 +1,8 @@
 {
-    "name": "cp_model/train",
+    "name": "ght_model/train",
     "search_type": "grid",
     "rendering_engine": true,
-    "weights_file": "init/cp_model_train_init_1_iter_1.caffemodel",
+    "weights_file": "init/ght_model_train_init_1_iter_1.caffemodel",
     "termination_rules": {
       "nan": true
     },
@@ -10,7 +10,7 @@
         {
             "name": "seed",
             "type": "preset",
-            "values": ["54879421"]
+            "values": ["314159"]
         },
         {
             "name": "number_of_gpus",
@@ -32,7 +32,7 @@
         {
             "name": "likelihood_loss_weight",
             "type": "preset",
-            "values": [0.1]
+            "values": [0.01]
         },
         {
             "name": "momentum",
@@ -55,6 +55,16 @@
             "values": [0.5]
         },
         {
+            "name": "rm_prob2",
+            "type": "preset",
+            "values": [0.5]
+        },
+        {
+            "name": "rm_prob3",
+            "type": "preset",
+            "values": [0.5]
+        },
+        {
             "name": "rm_active0",
             "type": "preset",
             "values": [true]
@@ -64,26 +74,41 @@
             "type": "preset",
             "values": [false]
         },
+        {
+            "name": "rm_active2",
+            "type": "preset",
+            "values": [true]
+        },
+        {
+            "name": "rm_active3",
+            "type": "preset",
+            "values": [false]
+        },
         ### Architectural Parameters ###
-        {
-            "name": "sim1_template_size",
-            "type": "preset",
-            "values": [4]
-        },
-        {
-            "name": "sim1_pad",
-            "type": "preset",
-            "values": [2]
-        },
         {
             "name": "sim1_num_instances",
             "type": "preset",
-            "values": [800]
+            "values": [32]
         },
         {
-            "name": "mex1_num_instances",
+            "name": "lv1_num_instances",
             "type": "preset",
-            "values": [10]
+            "values": [64]
+        },
+        {
+            "name": "lv2_num_instances",
+            "type": "preset",
+            "values": [128]
+        },
+        {
+            "name": "lv3_num_instances",
+            "type": "preset",
+            "values": [256]
+        },
+        {
+            "name": "lv4_num_instances",
+            "type": "preset",
+            "values": [512]
         },
         {
             "name": "linear_min_value",
@@ -99,11 +124,6 @@
             "name": "projected_offsets",
             "type": "preset",
             "values": [false]
-        },
-        {
-            "name": "shared_region_size",
-            "type": "preset",
-            "values": [1]
         },
         ### Learning Parameters ###
         {
@@ -129,7 +149,7 @@
         {
             "name": "weight_decay",
             "type": "preset",
-            "values": [1e-2]
+            "values": [1e-5]
         },
         {
             "name": "solver_type",

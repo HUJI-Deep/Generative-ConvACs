@@ -1,5 +1,5 @@
 {
-    "name": "cp_model/train/init",
+    "name": "gcp_model/train/init",
     "search_type": "grid",
     "rendering_engine": true,
     "termination_rules": {

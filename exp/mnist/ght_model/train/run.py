@@ -8,7 +8,7 @@ subprocess.check_call('%s/generate_mnist.py' % enclosed_dir, shell=True)
 
 try:
     signal.signal(signal.SIGINT, signal.SIG_IGN)
-    if not os.path.isfile(os.path.join(train_dir, 'init/cp_model_train_init_1_iter_1.caffemodel')):
+    if not os.path.isfile(os.path.join(train_dir, 'init/ght_model_train_init_1_iter_1.caffemodel')):
         print 'Generating pre-trained model:'
         print ''
         subprocess.check_call('%s/init/run.py' % train_dir, shell=True)
