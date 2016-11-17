@@ -1,0 +1,1141 @@
+    name: "ght_model_deploy"
+    ##############
+    ### Source ###
+    ##############
+    layer {
+        name: "data"
+        type: "Input"
+        top: "data"
+        input_param { shape: { dim: 100 dim: 3 dim: 32 dim: 32 } }
+    }
+
+    # Slice the image to obtain the 2 channels with the binocular image data in 
+    # first 2 channels (R,G). Since Caffe reads images in BGR order we want the last
+    # two channels loaded by the ImageData layer.
+    layer {
+        name: "slice_data"
+        type: "Slice"
+        bottom: "data"
+        top: "junk_channel"
+        top: "data_channels"
+        slice_param {
+            axis: 1
+            slice_point: 1
+        }
+    }
+
+   layer {
+        name: "slice_data_silence"
+        type: "Silence"
+        bottom: "junk_channel"
+    }
+
+    layer {
+        name: "conv1"
+        type: "Convolution"
+        bottom: "data_channels"
+        top: "conv1"
+        param {
+            lr_mult: 0
+        }
+        param {
+            lr_mult: 0
+        }
+        convolution_param {
+            num_output: 8
+            pad: 0
+            kernel_size: 2
+            stride: 2
+
+        }
+    }
+
+     layer {
+        name: "sim1"
+        type: "Similarity"
+        bottom: "conv1"
+        top: "sim1"
+        param {
+            lr_mult: 1.0
+            decay_mult: 0
+            min_value: -0.5
+            max_value: 0.5
+        }
+        param {
+            lr_mult: 1.0
+            min_value: 0
+            decay_mult: 0.0
+        }
+        similarity_param {
+            similarity_function: L2
+            num_instances: 128 
+            bias_term: false
+            normalization_term: true
+            normalization_term_fudge: 1e-4
+            ignore_nan_input: true
+            block_param {
+                block_size: 1
+                pad: 0
+                stride: 1
+                out_of_bounds_value: nan
+            }
+
+            template_filler {
+                type: "gaussian"
+                mean: 0
+                std: 0.05
+            }
+            weight_filler {
+                type: "gaussian"
+                mean: 100
+                std: 0
+            }
+        }
+    }
+
+
+
+
+    layer {
+        name: "rm1_margin_mask"
+        type: "DummyData"
+        top: "rm1_margin_mask"
+        dummy_data_param {
+            data_filler {
+                type: "bernoulli"
+                non_zero_probability: 0.75
+            }
+            shape {
+                dim: 32
+                dim: 1
+                dim: 16
+                dim: 16
+            }
+        }
+        include {
+            phase: TRAIN
+        }
+    }
+    layer {
+        name: "rm1_margin_mask"
+        type: "DummyData"
+        top: "rm1_margin_mask"
+        dummy_data_param {
+            data_filler {
+                type: "constant"
+                value: 1
+            }
+            shape {
+                dim: 100
+                dim: 1
+                dim: 16
+                dim: 16
+            }
+        }
+        include {
+            phase: TEST
+        }
+    }
+
+    layer {
+        name: "rm1_to_nan"
+        type: "Power"
+        bottom: "rm1_margin_mask"
+        top: "rm1_margin_mask_corrected"
+        power_param{
+        
+        }
+    }
+    layer {
+        name: "rm1_mask_tile"
+        type: "Tile"
+        bottom: "rm1_margin_mask_corrected"
+        top: "rm1_margin_tile"
+        tile_param{
+            axis: 1
+            tiles: 128
+        }
+    }
+    layer {
+        name: "rm1_marginalize"
+        type: "Eltwise"
+        bottom: "sim1"
+        bottom: "rm1_margin_tile"
+        top: "rm1"
+        eltwise_param{
+
+            operation: PROD
+
+        }
+    }
+
+
+    layer {
+        name: "lv1_norm"
+        type: "MEX"
+        bottom: "rm1"
+        top: "lv1_norm"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        mex_param {
+            num_instances: 1
+            softmax_mode: true
+            normalize_offsets: false
+            shared_offsets_region_size: -1
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "constant"
+                value: 0
+            }
+        }
+    }
+    layer {
+        name: "lv1_norm_norm_tile"
+        type: "Tile"
+        bottom: "lv1_norm"
+        top: "lv1_norm_norm_tile"
+        tile_param{
+            axis: 1
+            tiles: 128
+        }
+    }
+    layer {
+        name: "lv1_norm_normalized"
+        type: "Eltwise"
+        bottom: "rm1"
+        bottom: "lv1_norm_norm_tile"
+        top: "lv1_normalized"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: -1
+        }
+    }
+
+
+    layer {
+        name: "lv1_mex"
+        type: "MEX"
+        bottom: "lv1_normalized"
+        top: "lv1_mex"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 1.0
+            decay_mult: 1
+            is_logspace: true
+        }
+        mex_param {
+            num_instances: 256
+            softmax_mode: true
+            normalize_offsets: true
+            normalize_offsets_projected: false
+            use_unshared_regions: true
+            unshared_offsets_region_size: 2
+            
+            use_log_space_parameters: true
+	    linear_space_min_value: 1e-08
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "dirichlet"
+                alpha: 1.0
+                primal_dim: 128
+                to_log: true
+            }
+        }
+    }
+
+
+    layer {
+        name: "lv1_pool"
+        type: "Pooling"
+        bottom: "lv1_mex"
+        top: "lv1"
+        pooling_param {
+            pool: SUM
+            kernel_size: 2
+            stride: 2
+            pad: 0
+            engine: CAFFE
+        }
+    }
+    layer {
+        name: "lv1_post_norm"
+        type: "Pooling"
+        bottom: "lv1_norm"
+
+        top: "lv1_top_norm"
+
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 2
+            stride: 2
+            pad: 0
+        }
+    }
+
+
+
+
+
+    layer {
+        name: "rm2_margin_mask"
+        type: "DummyData"
+        top: "rm2_margin_mask"
+        dummy_data_param {
+            data_filler {
+                type: "bernoulli"
+                non_zero_probability: 0.75
+            }
+            shape {
+                dim: 32
+                dim: 1
+                dim: 8
+                dim: 8
+            }
+        }
+        include {
+            phase: TRAIN
+        }
+    }
+    layer {
+        name: "rm2_margin_mask"
+        type: "DummyData"
+        top: "rm2_margin_mask"
+        dummy_data_param {
+            data_filler {
+                type: "constant"
+                value: 1
+            }
+            shape {
+                dim: 100
+                dim: 1
+                dim: 8
+                dim: 8
+            }
+        }
+        include {
+            phase: TEST
+        }
+    }
+
+    layer {
+        name: "rm2_to_nan"
+        type: "Power"
+        bottom: "rm2_margin_mask"
+        top: "rm2_margin_mask_corrected"
+        power_param{
+        
+        }
+    }
+    layer {
+        name: "rm2_mask_tile"
+        type: "Tile"
+        bottom: "rm2_margin_mask_corrected"
+        top: "rm2_margin_tile"
+        tile_param{
+            axis: 1
+            tiles: 256
+        }
+    }
+    layer {
+        name: "rm2_marginalize"
+        type: "Eltwise"
+        bottom: "lv1"
+        bottom: "rm2_margin_tile"
+        top: "rm2"
+        eltwise_param{
+
+            operation: PROD
+
+        }
+    }
+
+    layer {
+        name: "rm2_marginalize_norm"
+        type: "Eltwise"
+        bottom: "lv1_top_norm"
+        bottom: "rm2_margin_mask"
+        top: "rm2_top_norm"
+        eltwise_param{
+            operation: PROD
+        }
+    }
+
+
+    layer {
+        name: "lv2_norm"
+        type: "MEX"
+        bottom: "rm2"
+        top: "lv2_norm"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        mex_param {
+            num_instances: 1
+            softmax_mode: true
+            normalize_offsets: false
+            shared_offsets_region_size: -1
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "constant"
+                value: 0
+            }
+        }
+    }
+    layer {
+        name: "lv2_norm_norm_tile"
+        type: "Tile"
+        bottom: "lv2_norm"
+        top: "lv2_norm_norm_tile"
+        tile_param{
+            axis: 1
+            tiles: 256
+        }
+    }
+    layer {
+        name: "lv2_norm_normalized"
+        type: "Eltwise"
+        bottom: "rm2"
+        bottom: "lv2_norm_norm_tile"
+        top: "lv2_normalized"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: -1
+        }
+    }
+
+
+    layer {
+        name: "lv2_mex"
+        type: "MEX"
+        bottom: "lv2_normalized"
+        top: "lv2_mex"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 1.0
+            decay_mult: 1
+            is_logspace: true
+        }
+        mex_param {
+            num_instances: 256
+            softmax_mode: true
+            normalize_offsets: true
+            normalize_offsets_projected: false
+            use_unshared_regions: false
+            shared_offsets_region_size: 1
+            use_log_space_parameters: true
+	    linear_space_min_value: 1e-08
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "dirichlet"
+                alpha: 1.0
+                primal_dim: 256
+                to_log: true
+            }
+        }
+    }
+
+
+    layer {
+        name: "lv2_pool"
+        type: "Pooling"
+        bottom: "lv2_mex"
+        top: "lv2"
+        pooling_param {
+            pool: SUM
+            kernel_size: 2
+            stride: 2
+            pad: 0
+            engine: CAFFE
+        }
+    }
+    layer {
+        name: "lv2_post_norm"
+        type: "Pooling"
+        bottom: "lv2_norm"
+
+        top: "lv2_original_post_norm"
+
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 2
+            stride: 2
+            pad: 0
+        }
+    }
+
+    layer {
+        name: "lv2_post_norm"
+        type: "Pooling"
+        bottom: "rm2_top_norm"
+        top: "lv2_bottom_post_norm"
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 2
+            stride: 2
+            pad: 0
+        }
+    }
+
+
+    layer {
+        name: "lv2_combined_post_norm"
+        type: "Eltwise"
+        bottom: "lv2_original_post_norm"
+        bottom: "lv2_bottom_post_norm"
+        top: "lv2_top_norm"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: 1
+        }
+    }
+
+
+
+
+    layer {
+        name: "rm3_margin_mask"
+        type: "DummyData"
+        top: "rm3_margin_mask"
+        dummy_data_param {
+            data_filler {
+                type: "bernoulli"
+                non_zero_probability: 0.9
+            }
+            shape {
+                dim: 32
+                dim: 1
+                dim: 4
+                dim: 4
+            }
+        }
+        include {
+            phase: TRAIN
+        }
+    }
+    layer {
+        name: "rm3_margin_mask"
+        type: "DummyData"
+        top: "rm3_margin_mask"
+        dummy_data_param {
+            data_filler {
+                type: "constant"
+                value: 1
+            }
+            shape {
+                dim: 100
+                dim: 1
+                dim: 4
+                dim: 4
+            }
+        }
+        include {
+            phase: TEST
+        }
+    }
+
+    layer {
+        name: "rm3_to_nan"
+        type: "Power"
+        bottom: "rm3_margin_mask"
+        top: "rm3_margin_mask_corrected"
+        power_param{
+        
+        }
+    }
+    layer {
+        name: "rm3_mask_tile"
+        type: "Tile"
+        bottom: "rm3_margin_mask_corrected"
+        top: "rm3_margin_tile"
+        tile_param{
+            axis: 1
+            tiles: 256
+        }
+    }
+    layer {
+        name: "rm3_marginalize"
+        type: "Eltwise"
+        bottom: "lv2"
+        bottom: "rm3_margin_tile"
+        top: "rm3"
+        eltwise_param{
+
+            operation: PROD
+
+        }
+    }
+
+    layer {
+        name: "rm3_marginalize_norm"
+        type: "Eltwise"
+        bottom: "lv2_top_norm"
+        bottom: "rm3_margin_mask"
+        top: "rm3_top_norm"
+        eltwise_param{
+            operation: PROD
+        }
+    }
+
+
+    layer {
+        name: "lv3_norm"
+        type: "MEX"
+        bottom: "rm3"
+        top: "lv3_norm"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        mex_param {
+            num_instances: 1
+            softmax_mode: true
+            normalize_offsets: false
+            shared_offsets_region_size: -1
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "constant"
+                value: 0
+            }
+        }
+    }
+    layer {
+        name: "lv3_norm_norm_tile"
+        type: "Tile"
+        bottom: "lv3_norm"
+        top: "lv3_norm_norm_tile"
+        tile_param{
+            axis: 1
+            tiles: 256
+        }
+    }
+    layer {
+        name: "lv3_norm_normalized"
+        type: "Eltwise"
+        bottom: "rm3"
+        bottom: "lv3_norm_norm_tile"
+        top: "lv3_normalized"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: -1
+        }
+    }
+
+
+    layer {
+        name: "lv3_mex"
+        type: "MEX"
+        bottom: "lv3_normalized"
+        top: "lv3_mex"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 1.0
+            decay_mult: 1
+            is_logspace: true
+        }
+        mex_param {
+            num_instances: 256
+            softmax_mode: true
+            normalize_offsets: true
+            normalize_offsets_projected: false
+            use_unshared_regions: false
+            shared_offsets_region_size: 1
+            use_log_space_parameters: true
+	    linear_space_min_value: 1e-08
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "dirichlet"
+                alpha: 1.0
+                primal_dim: 256
+                to_log: true
+            }
+        }
+    }
+
+
+    layer {
+        name: "lv3_pool"
+        type: "Pooling"
+        bottom: "lv3_mex"
+        top: "lv3"
+        pooling_param {
+            pool: SUM
+            kernel_size: 2
+            stride: 2
+            pad: 0
+            engine: CAFFE
+        }
+    }
+    layer {
+        name: "lv3_post_norm"
+        type: "Pooling"
+        bottom: "lv3_norm"
+
+        top: "lv3_original_post_norm"
+
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 2
+            stride: 2
+            pad: 0
+        }
+    }
+
+    layer {
+        name: "lv3_post_norm"
+        type: "Pooling"
+        bottom: "rm3_top_norm"
+        top: "lv3_bottom_post_norm"
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 2
+            stride: 2
+            pad: 0
+        }
+    }
+
+
+    layer {
+        name: "lv3_combined_post_norm"
+        type: "Eltwise"
+        bottom: "lv3_original_post_norm"
+        bottom: "lv3_bottom_post_norm"
+        top: "lv3_top_norm"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: 1
+        }
+    }
+
+
+
+
+    layer {
+        name: "lv4_norm"
+        type: "MEX"
+        bottom: "lv3"
+        top: "lv4_norm"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        mex_param {
+            num_instances: 1
+            softmax_mode: true
+            normalize_offsets: false
+            shared_offsets_region_size: -1
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "constant"
+                value: 0
+            }
+        }
+    }
+    layer {
+        name: "lv4_norm_norm_tile"
+        type: "Tile"
+        bottom: "lv4_norm"
+        top: "lv4_norm_norm_tile"
+        tile_param{
+            axis: 1
+            tiles: 256
+        }
+    }
+    layer {
+        name: "lv4_norm_normalized"
+        type: "Eltwise"
+        bottom: "lv3"
+        bottom: "lv4_norm_norm_tile"
+        top: "lv4_normalized"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: -1
+        }
+    }
+
+
+    layer {
+        name: "lv4_mex"
+        type: "MEX"
+        bottom: "lv4_normalized"
+        top: "lv4_mex"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 1.0
+            decay_mult: 1
+            is_logspace: true
+        }
+        mex_param {
+            num_instances: 512
+            softmax_mode: true
+            normalize_offsets: true
+            normalize_offsets_projected: false
+            use_unshared_regions: false
+            shared_offsets_region_size: 1
+            use_log_space_parameters: true
+	    linear_space_min_value: 1e-08
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "dirichlet"
+                alpha: 1.0
+                primal_dim: 256
+                to_log: true
+            }
+        }
+    }
+
+
+    layer {
+        name: "lv4_pool"
+        type: "Pooling"
+        bottom: "lv4_mex"
+        top: "lv4"
+        pooling_param {
+            pool: SUM
+            kernel_size: 2
+            stride: 2
+            pad: 0
+            engine: CAFFE
+        }
+    }
+    layer {
+        name: "lv4_post_norm"
+        type: "Pooling"
+        bottom: "lv4_norm"
+
+        top: "lv4_original_post_norm"
+
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 2
+            stride: 2
+            pad: 0
+        }
+    }
+
+    layer {
+        name: "lv4_post_norm"
+        type: "Pooling"
+        bottom: "lv3_top_norm"
+        top: "lv4_bottom_post_norm"
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 2
+            stride: 2
+            pad: 0
+        }
+    }
+
+
+    layer {
+        name: "lv4_combined_post_norm"
+        type: "Eltwise"
+        bottom: "lv4_original_post_norm"
+        bottom: "lv4_bottom_post_norm"
+        top: "lv4_top_norm"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: 1
+        }
+    }
+
+
+
+
+    layer {
+        name: "lv5_norm"
+        type: "MEX"
+        bottom: "lv4"
+        top: "lv5_norm"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        mex_param {
+            num_instances: 1
+            softmax_mode: true
+            normalize_offsets: false
+            shared_offsets_region_size: -1
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "constant"
+                value: 0
+            }
+        }
+    }
+    layer {
+        name: "lv5_norm_norm_tile"
+        type: "Tile"
+        bottom: "lv5_norm"
+        top: "lv5_norm_norm_tile"
+        tile_param{
+            axis: 1
+            tiles: 512
+        }
+    }
+    layer {
+        name: "lv5_norm_normalized"
+        type: "Eltwise"
+        bottom: "lv4"
+        bottom: "lv5_norm_norm_tile"
+        top: "lv5_normalized"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: -1
+        }
+    }
+
+
+    layer {
+        name: "lv5_mex"
+        type: "MEX"
+        bottom: "lv5_normalized"
+        top: "lv5_mex"
+        param {
+            lr_mult: 0
+            decay_mult: 0
+        }
+        param {
+            lr_mult: 1.0
+            decay_mult: 1
+            is_logspace: true
+        }
+        mex_param {
+            num_instances: 5
+            softmax_mode: true
+            normalize_offsets: true
+            normalize_offsets_projected: false
+            use_unshared_regions: false
+            shared_offsets_region_size: 1
+            use_log_space_parameters: true
+	    linear_space_min_value: 1e-08
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            epsilon_filler {
+                type: "constant"
+                value: 1
+            }
+            offsets_filler {
+                type: "dirichlet"
+                alpha: 1.0
+                primal_dim: 512
+                to_log: true
+            }
+        }
+    }
+
+
+    layer {
+        name: "lv5_pool"
+        type: "Pooling"
+        bottom: "lv5_mex"
+        top: "lv5"
+        pooling_param {
+            pool: SUM
+            kernel_size: 1
+            stride: 1
+            pad: 0
+            engine: CAFFE
+        }
+    }
+    layer {
+        name: "lv5_post_norm"
+        type: "Pooling"
+        bottom: "lv5_norm"
+
+        top: "lv5_original_post_norm"
+
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 1
+            stride: 1
+            pad: 0
+        }
+    }
+
+    layer {
+        name: "lv5_post_norm"
+        type: "Pooling"
+        bottom: "lv4_top_norm"
+        top: "lv5_bottom_post_norm"
+        pooling_param {
+            pool: SUM
+            engine: CAFFE
+            kernel_size: 1
+            stride: 1
+            pad: 0
+        }
+    }
+
+
+    layer {
+        name: "lv5_combined_post_norm"
+        type: "Eltwise"
+        bottom: "lv5_original_post_norm"
+        bottom: "lv5_bottom_post_norm"
+        top: "lv5_top_norm"
+        eltwise_param{
+            operation: SUM
+            coeff: 1
+            coeff: 1
+        }
+    }
+
+
+
+
+    layer {
+        name: "global_sum_pool"
+        type: "Pooling"
+        bottom: "lv5"
+        top: "unnormalized"
+        pooling_param {
+            pool: SUM
+            global_pooling: true
+            
+            engine: CAFFE
+        }
+    }
+
+    layer {
+        name: "global_sum_pool2"
+        type: "Pooling"
+        bottom: "lv5_top_norm"
+        top: "total_norm"
+        pooling_param {
+            pool: SUM
+            global_pooling: true
+            
+            engine: CAFFE
+        }
+    }
+
+    ############
+    ### Sink ###
+    ############
+    layer {
+        name: "silence_norm"
+        type: "Silence"
+        bottom: "total_norm"
+    }
+    layer {
+        name: "prob"
+        type: "Softmax"
+        bottom: "unnormalized"
+        top: "prob"
+    }

@@ -225,6 +225,14 @@ def main(argv):
     )
     args = parser.parse_args()
     db_type = args.db_type
+    whole_train_db = os.path.join(SCRIPT_DIR, 'data/mnist_whole_train_' + db_type)
+    train_db = os.path.join(SCRIPT_DIR, 'data/mnist_train_' + db_type)
+    validation_db = os.path.join(SCRIPT_DIR, 'data/mnist_validation_' + db_type)
+    test_db = os.path.join(SCRIPT_DIR, 'data/mnist_test_' + db_type)
+    if not False in [os.path.isdir(db) for db in [whole_train_db, train_db, validation_db, test_db]]:
+        print 'All required datasets are present.'
+        sys.exit(0)
+    
     print 'Generating databases'
     # Make sure the data directory exists
     try:
@@ -239,10 +247,6 @@ def main(argv):
     test_label_tar_file = download_data(MNIST_TEST_LABELS_URL, os.path.join(SCRIPT_DIR, 'data'))
     test = [test_img_tar_file, test_label_tar_file]
     # Create train and test DBs
-    whole_train_db = os.path.join(SCRIPT_DIR, 'data/mnist_whole_train_' + db_type)
-    train_db = os.path.join(SCRIPT_DIR, 'data/mnist_train_' + db_type)
-    validation_db = os.path.join(SCRIPT_DIR, 'data/mnist_validation_' + db_type)
-    test_db = os.path.join(SCRIPT_DIR, 'data/mnist_test_' + db_type)
     create_dbs([train, test], whole_train_db, train_db, validation_db, test_db, db_type)
     print '#######'
     print 'Done!'

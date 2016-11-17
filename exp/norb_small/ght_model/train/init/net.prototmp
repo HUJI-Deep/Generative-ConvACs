@@ -1,0 +1,129 @@
+# Covering the full 10,000 testing and 40,000 training images.
+# Unsupervised test settings
+init_test_interval: 0 # How many iterations between each test
+init_test_iter: 625   # number of batches per test - 625*64=40000
+# The base learning rate, momentum and the weight decay of the network.
+base_lr: 1
+momentum: 0.9
+weight_decay: 0
+# The learning rate policy
+lr_policy: "fixed"
+# Number of iterations between displays
+display: 10
+# The maximum number of iterations
+max_iter: 1
+# snapshot intermediate results
+snapshot: 1
+snapshot_prefix: "{{ name }}"
+# solver mode: CPU or GPU
+solver_mode: GPU
+type: "SGD"
+debug_info: false
+snapshot_after_train: false
+random_seed: 314159
+
+net_param {
+    name: "{{ name }}"
+    ##############
+    ### Source ###
+    ##############
+    layer {
+        name: "mnist"
+        type: "ImageData"
+        top: "raw_data"
+        top: "label"
+        image_data_param {
+            source: "data/aug_norb_small_2D_train_image_data/index.txt"
+            root_folder: "data/aug_norb_small_2D_train_image_data/"
+            is_color: true
+            batch_size: 100
+            shuffle: true
+            cache_images: true
+        }
+        transform_param {
+            scale: {{ 1.0 / 255.0 }}
+            #mean_value: 0.754589589 # Calculated from training set
+        }
+        include: { 
+            phase: TRAIN 
+        }
+    }
+    # Slice the image to obtain the 2 channels with the binocular image data in 
+    # first 2 channels (R,G). Since Caffe reads images in BGR order we want the last
+    # two channels loaded by the ImageData layer.
+    layer {
+        name: "slice_data"
+        type: "Slice"
+        bottom: "raw_data"
+        top: "junk_channel"
+        top: "data"
+        slice_param {
+            axis: 1
+            slice_point: 1
+        }
+    }
+    layer {
+        name: "slice_data_silence"
+        type: "Silence"
+        bottom: "junk_channel"
+    }
+    layer {
+        name: "conv1"
+        type: "Convolution"
+        bottom: "data"
+        top: "conv1"
+        param {
+            lr_mult: 0
+        }
+        param {
+            lr_mult: 0
+        }
+        convolution_param {
+            num_output: 8
+            kernel_size: 2
+            stride: 1
+            unsupervised_init {
+                  type: "pca"
+                  num_batches: 1000
+                  fudge_factor: 0.0001
+                  zca_whitening: true
+            }
+        }
+    }
+    layer {
+        name: "sim1"
+        type: "Similarity"
+        bottom: "conv1"
+        top: "sim1"
+        param {
+            lr_mult: 0
+        }
+        param {
+            lr_mult: 0
+            min_value: 0
+        }
+        similarity_param {
+            similarity_function: L2
+            num_instances: {{ sim1_num_instances }}
+            bias_term: false
+            normalization_term: true
+            normalization_term_fudge: 0.0001
+            block_param {
+                block_size: 1
+                stride: 1
+            }
+            unsupervised_init {
+                type: "gmm"
+                max_iterations: 10
+                num_batches: 1000
+                fudge_factor: 1e-4
+            }
+        }
+    }
+    layer {
+        name: "sink"
+        type: "Silence"
+        bottom: "sim1"
+        bottom: "label"
+    }
+}

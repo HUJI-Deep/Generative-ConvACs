@@ -1,0 +1,166 @@
+{
+    "name": "ght_model/train/loss_weight_0.1",
+    "search_type": "grid",
+    "rendering_engine": true,
+    "weights_file": "../init/ght_model_train_init_1_iter_1.caffemodel",
+    "termination_rules": {
+      "nan": true
+    },
+    "hyper_params": [
+        {
+            "name": "seed",
+            "type": "preset",
+            "values": ["3778079606", "9508113122"]
+        },
+        {
+            "name": "number_of_gpus",
+            "type": "preset",
+            # Change to number of available GPUs on system!
+            # Affects the effective batch size used during training.
+            "values": [4]
+        },
+        {
+            "name": "batch_size",
+            "type": "preset",
+            "values": [128]
+        },
+        {
+            "name": "base_lr",
+            "type": "preset",
+            "values": [0.01]
+        },
+        {
+            "name": "likelihood_loss_weight",
+            "type": "preset",
+            "values": [0.1]
+        },
+        {
+            "name": "momentum",
+            "type": "preset",
+            "values": [0.975]
+        },
+        {
+            "name": "momentum2",
+            "type": "preset",
+            "values": [0.9]
+        },
+        {
+            "name": "rm_prob1",
+            "type": "preset",
+            "values": [0.75]
+        },
+        {
+            "name": "rm_prob2",
+            "type": "preset",
+            "values": [0.75]
+        },
+        {
+            "name": "rm_prob3",
+            "type": "preset",
+            "values": [0.9]
+        },
+        {
+            "name": "rm_active1",
+            "type": "preset",
+            "values": [true]
+        },
+        {
+            "name": "rm_active2",
+            "type": "preset",
+            "values": [true]
+        },
+        {
+            "name": "rm_active3",
+            "type": "preset",
+            "values": [true]
+        },
+        ### Architectural Parameters ###
+        {
+            "name": "sim1_num_instances",
+            "type": "preset",
+            "values": [128]
+        },
+        {
+            "name": "lv1_num_instances",
+            "type": "preset",
+            "values": [256]
+        },
+        {
+            "name": "lv2_num_instances",
+            "type": "preset",
+            "values": [256]
+        },
+        {
+            "name": "lv3_num_instances",
+            "type": "preset",
+            "values": [256]
+        },
+        {
+            "name": "lv4_num_instances",
+            "type": "preset",
+            "values": [512]
+        },
+        {
+            "name": "linear_min_value",
+            "type": "preset",
+            "values": [1e-8]
+        },
+        {
+            "name": "log_space",
+            "type": "preset",
+            "values": [true]
+        },
+        {
+            "name": "projected_offsets",
+            "type": "preset",
+            "values": [false]
+        },
+        ### Learning Parameters ###
+        {
+            "name": "wh_conv_lr",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "sim_templates_lr",
+            "type": "preset",
+            "values": [0.1]
+        },
+        {
+            "name": "sim_weights_lr",
+            "type": "preset",
+            "values": [0.1]
+        },
+        {
+            "name": "sim_weight_decay",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "mex_offsets_lr",
+            "type": "preset",
+            "values": [1]
+        },
+        {
+            "name": "weight_decay",
+            "type": "preset",
+            "values": [0.001]
+        },
+        {
+            "name": "solver_type",
+            "type": "preset",
+            "values": ["Nadam"]
+        },
+        {
+            "name": "delta",
+            "type": "preset",
+            "values": [1e-16]
+        },
+        {
+            "name": "max_iter",
+            "type": "preset",
+            "values": [10000]
+        }
+    ]
+}
+

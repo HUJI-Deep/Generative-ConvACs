@@ -3,16 +3,16 @@ import os, subprocess, signal, time
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 GEN_SCRIPT = os.path.abspath(os.path.join(SCRIPT_DIR, '../../utils/generate_missing_data_dataset.py'))
-MNIST_TEST = 'data/mnist_test_image_data'
-MNIST_TRAIN = 'data/mnist_train_image_data'
-MNIST_VALID = 'data/mnist_validation_image_data'
-MNIST_WHOLE_TRAIN = 'data/mnist_whole_train_image_data'
-DBS = [MNIST_TRAIN, MNIST_WHOLE_TRAIN, MNIST_VALID, MNIST_TEST]
+MNIST_TEST = 'data/norb_small_2D_test_image_data'
+MNIST_TRAIN = 'data/norb_small_2D_train_image_data'
+MNIST_VALID = 'data/norb_small_2D_validation_image_data'
+MNIST_WHOLE_TRAIN = 'data/norb_small_2D_whole_train_image_data'
+DBS = [MNIST_VALID, MNIST_TEST]
 MAR_PROBS = [0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
 RECT_NUMS = [1, 2, 3]
 RECT_WIDTHS = [7, 11, 15]
 
-subprocess.check_call('%s/generate_mnist.py' % SCRIPT_DIR, shell=True)
+subprocess.check_call('%s/generate_norb_small.py' % SCRIPT_DIR, shell=True)
 try:
     for db in DBS:
         for mar_prob in MAR_PROBS:
