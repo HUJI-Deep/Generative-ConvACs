@@ -1,0 +1,193 @@
+{% macro input(name, path, batch_size, is_train, stage=None) %}
+   layer {
+        name: "{{ name }}_labeled"
+        type: "ImageData"
+        top: "data"
+        top: "label"
+        image_data_param {
+            source: "data/{{ path }}/index.txt"
+            root_folder: "data/{{ path }}/"
+            batch_size: {{ batch_size | int }}
+            shuffle: false
+            is_color: false
+        }
+        transform_param {
+          scale: 0.00390625
+        }
+        include: { 
+            phase: {{ 'TRAIN' if is_train else 'TEST' }}
+            {{ ('stage: "%s"' | format(stage)) if stage }}
+        }
+    }
+
+{% endmacro %}
+
+
+# Number of iterations between tests
+test_interval: 1000
+# Covering the full 10,000 testing and 40,000 training images.
+test_iter: 100
+test_state: { stage: "test-on-corrupted-test-set" }
+# The base learning rate, momentum and the weight decay of the network.
+base_lr: {{ base_lr }}
+momentum: {{ momentum }}
+weight_decay: {{ weight_decay }}
+# The learning rate policy
+lr_policy: "inv"
+gamma: 0.0001
+power: 0.75
+# Number of iterations between displays
+display: 20
+# The maximum number of iterations
+max_iter: {{ max_iter | int }}
+# snapshot intermediate results
+snapshot: 5000
+snapshot_prefix: "{{ name }}"
+# solver mode: CPU or GPU
+solver_mode: GPU
+type: "{{ solver_type }}"
+debug_info: false
+
+net_param {
+    name: "{{ name }}"
+
+    {{ input('mnist_train', 'mnist_train_image_data', 100, is_train=True, stage=None) }}
+    {{ input('mnist_test_valid', ('mnist_test_image_data_minrects_%d_maxrects_%d_minwidth_%d_maxwidth_%d_dpm_i' | format(num_rects, num_rects, rect_size, rect_size)), 100, is_train=False, stage='test-on-corrupted-test-set') }}
+ 
+
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 20
+    kernel_size: 5
+    stride: 1
+    pad: 0
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "pool1"
+  top: "conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 50
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pool2"
+  type: "Pooling"
+  bottom: "conv2"
+  top: "pool2"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {
+  name: "ip1"
+  type: "InnerProduct"
+  bottom: "pool2"
+  top: "ip1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "ip1"
+  top: "ip1"
+}
+layer {
+  name: "ip2"
+  type: "InnerProduct"
+  bottom: "ip1"
+  top: "ip2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 10
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "accuracy"
+  type: "Accuracy"
+  bottom: "ip2"
+  bottom: "label"
+  top: "accuracy"
+  include {
+    phase: TEST
+  }
+}
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "ip2"
+  bottom: "label"
+  top: "loss"
+}
+
+}
