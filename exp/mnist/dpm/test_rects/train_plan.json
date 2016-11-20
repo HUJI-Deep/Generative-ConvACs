@@ -1,0 +1,62 @@
+{
+    "name": "dpm/test_rects",
+    "search_type": "grid",
+    "weights_file": "../../lenet/train/lenet_train_1_iter_10000.caffemodel",
+    "rendering_engine": true,
+    "termination_rules": {
+      "nan": true
+    },
+    "hyper_params": [
+        {
+            "name": "weight_decay",
+            "type": "preset",
+            "values": [1e-5]
+        },
+        {
+            "name": "num_rects",
+            "type": "preset",
+            "values": [1,2,3]
+        },
+        {
+            "name": "rect_size",
+            "type": "preset",
+            "values": [7,11,15]
+        },
+            
+        {
+            "name": "mirror",
+            "type": "preset",
+            "values": [false]
+        },
+        {
+            "name": "base_lr",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "labeled_batch",
+            "type": "preset",
+            "values": [100]
+        },
+
+        {
+            "name": "momentum",
+            "type": "preset",
+            "values": [0.9]
+        },
+
+        ### Architectural Parameters ###
+
+        ### Learning Parameters ###
+        {
+            "name": "solver_type",
+            "type": "preset",
+            "values": ["SGD"]
+        },
+        {
+            "name": "max_iter",
+            "type": "preset",
+            "values": [1]
+        }
+    ]
+}
