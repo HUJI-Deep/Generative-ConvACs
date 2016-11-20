@@ -19,7 +19,7 @@ try:
             new_db = '%s_mar_%.2f' % (db, mar_prob)
             if os.path.isdir(os.path.join(SCRIPT_DIR, new_db)):
                 continue
-            cmd = '%s --MAR_prob %.2f %s ' % (GEN_SCRIPT, mar_prob, db)
+            cmd = '%s --MAR_prob %.2f %s --same_mask_to_all_channels n' % (GEN_SCRIPT, mar_prob, db)
             print cmd
             subprocess.check_call(cmd, shell=True, cwd=SCRIPT_DIR)
         for rect_num in RECT_NUMS:
@@ -27,7 +27,7 @@ try:
                 new_db = '{0}_minrects_{1}_maxrects_{1}_minwidth_{2}_maxwidth_{2}'.format(db, rect_num, rect_width)
                 if os.path.isdir(os.path.join(SCRIPT_DIR, new_db)):
                     continue
-                cmd = '{0} --min_rects {1} --max_rects {1} --min_width {2} --max_width {2} {3} '.format(GEN_SCRIPT, rect_num, rect_width, db)
+                cmd = '{0} --min_rects {1} --max_rects {1} --min_width {2} --max_width {2} {3}  --same_mask_to_all_channels n'.format(GEN_SCRIPT, rect_num, rect_width, db)
                 print cmd
                 subprocess.check_call(cmd, shell=True, cwd=SCRIPT_DIR)
 except KeyboardInterrupt:

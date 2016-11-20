@@ -30,29 +30,41 @@ Corrupt an image by two methods:
     2) Remove random rectangles - min/max_rects control the number of rectangles,
        and min/max_width control the size of the rectangles.
 '''
-def corrupt_image(img, MAR_prob=0, min_rects=0, max_rects=0, min_width=0, max_width=0):
+def corrupt_image(img, MAR_prob=0, min_rects=0, max_rects=0, min_width=0, max_width=0, apply_to_all_channels=False):
+    def generate_channel_mask():
+        mask = np.zeros(img.shape[0:2], dtype=np.bool)
+        if MAR_prob > 0:
+            mask[(random_sample(mask.shape) < MAR_prob)] = True
+        if max_rects > 0 and max_width > 0:
+            h, w = mask.shape
+            num_rects = random_integers(min_rects, max_rects)
+            for i in range(num_rects):
+                px1 = random_integers(0, w - min(max(min_width, 1), w))
+                py1 = random_integers(0, h - min(max(min_width, 1), h))
+                px2 = px1 + min_width + random_integers(0, max(min(w - px1 - min_width, max_width - min_width), 0));
+                py2 = py1 + min_width + random_integers(0, max(min(h - py1 - min_width, max_width - min_width), 0));
+                if px1 <= px2 and py1 <= py2:
+                    mask[py1:py2, px1:px2] = True
+                else:
+                    # One of the sides has length 0, so we should remove any pixels4
+                    pass
+        return mask
     new_img = img.copy()
-    mask = np.zeros(img.shape[0:2], dtype=np.bool)
-    if MAR_prob > 0:
-        mask[(random_sample(mask.shape) < MAR_prob)] = True
-    if max_rects > 0 and max_width > 0:
-        h, w = mask.shape
-        num_rects = random_integers(min_rects, max_rects)
-        for i in range(num_rects):
-            px1 = random_integers(0, w - min(max(min_width, 1), w))
-            py1 = random_integers(0, h - min(max(min_width, 1), h))
-            px2 = px1 + min_width + random_integers(0, max(min(w - px1 - min_width, max_width - min_width), 0));
-            py2 = py1 + min_width + random_integers(0, max(min(h - py1 - min_width, max_width - min_width), 0));
-            if px1 <= px2 and py1 <= py2:
-                mask[py1:py2, px1:px2] = True
-            else:
-                # One of the sides has length 0, so we should remove any pixels4
-                pass
-    if len(new_img.shape) == 2:
-        new_img[mask] = 0
+    channels = 1 if len(new_img.shape) == 2 else new_img.shape[-1]
+    global_mask = np.zeros(img.shape, dtype=np.bool)
+    if channels == 1 or apply_to_all_channels:
+        mask = generate_channel_mask()
+        if channels == 1:
+            global_mask[:, :] = mask
+        else:
+            for i in xrange(channels):
+                global_mask[:, :, i] = mask
     else:
-        new_img[mask,:] = 0
-    return (new_img, 1.0 * mask)
+        global_mask = np.zeros(img.shape, dtype=np.bool)
+        for i in xrange(channels):
+            global_mask[:,:,i] = generate_channel_mask()
+    new_img[global_mask] = 0
+    return (new_img, 1.0 * global_mask)
 
 # Process command line inputs
 def get_base_argparser(argv):
@@ -66,6 +78,14 @@ def get_base_argparser(argv):
         if x < 0 or x > 1:
             raise ValueError('parameter must be a real number between 0 and 1 (inclusive)')
         return x
+    def bool_value(x):
+        if x == 'y':
+            return True
+        elif x == 'n':
+            return False
+        else:
+            raise ValueError("parameter must be either 'y' or 'n', representing yes and no respectively.")
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--MAR_prob",
@@ -97,6 +117,12 @@ def get_base_argparser(argv):
         default=0,
         help="maximum width of the squares that will be removed from the image."
     )
+    parser.add_argument(
+        "--same_mask_to_all_channels",
+        type=bool_value,
+        default=False,
+        help="For color images, if true ('y') then the same mask will be applied to all channels. Otherwise a different mask will be used for each channel."
+    )
     return parser 
 def get_args(argv):
     parser = get_base_argparser(argv)
@@ -122,7 +148,8 @@ def corrupt_source_image(params):
         min_rects=args.min_rects,
         max_rects=args.max_rects,
         min_width=args.min_width,
-        max_width=args.max_width)
+        max_width=args.max_width,
+        apply_to_all_channels=args.same_mask_to_all_channels)
     filename = os.path.splitext(os.path.basename(source_path))[0]
     save_image(corrupted_img, '%s/%s_corrupted.png' % (args.output_dir, filename))
     save_image(mask, '%s/%s_mask.png' % (args.output_dir, filename))
