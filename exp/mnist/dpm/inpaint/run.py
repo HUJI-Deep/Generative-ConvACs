@@ -50,7 +50,7 @@ def inpaint_dataset(model_path, missing_data_path):
     '--missing_dataset_path', missing_data_norm_path]
     cmd = ' '.join(cmd)
     print cmd
-    results = subprocess.check_output(cmd, shell=True, cwd=SCRIPT_DIR)
+    subprocess.check_call(cmd, shell=True, cwd=SCRIPT_DIR)
     return
     
      
