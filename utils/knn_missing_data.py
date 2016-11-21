@@ -67,7 +67,7 @@ def knn_masked_data(trX,trY,missing_data_dir, input_shape, k):
         # Corrupt whole training set according to the current mask
         corr_trX = np.multiply(trX, rep_mask)        
         knn_m.fit(corr_trX, trY)
-        prob_Y_hat[i,:] = knn_m.predict_proba(v_im)
+        prob_Y_hat[i,:] = knn_m.predict_proba(v_im.reshape(1,-1))
         pbar.update(i)
     pbar.finish()
     return prob_Y_hat
@@ -76,9 +76,7 @@ def knn_masked_data(trX,trY,missing_data_dir, input_shape, k):
 def load_norb_small(data_dir):
     tr_path = os.path.join(data_dir,'norb_small_2D_whole_train_image_data')
     te_path = os.path.join(data_dir,'norb_small_2D_test_image_data')
-    print '\nLoading train set images...'
     trX, trY = load_imgs_from_dir(tr_path, (32,32,2), 'index.txt')
-    print '\nLoading test set images...'
     teX, teY = load_imgs_from_dir(te_path, (32,32,2), 'index.txt')
     
     return trX, teX, trY, teY
