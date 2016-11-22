@@ -8,7 +8,7 @@ def summary(table):
     table = table.where(lambda x: x['optimization_done'] == True)
     accuracies = table.select(['hyper__iid_prob','test_results0_0_accuracy'])
     accuracies = accuracies.rename({'test_results0_0_accuracy': 'accuracy', 'hyper__iid_prob': 'IID Prob'})
-    accuracies = accuracies.order_by(['Width', 'Number of Rectangles'])
+    accuracies = accuracies.order_by(['IID Prob'])
     accuracies = accuracies.compute([percentages('accuracy')], replace=True)
     accuracies.print_table()
 
