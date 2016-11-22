@@ -1,0 +1,118 @@
+{
+    "name": "base_cnn/train",
+    "search_type": "grid",
+    "rendering_engine": true,
+    "termination_rules": {
+#      "delta": 1e-7,
+      "nan": true
+    },
+    "hyper_params": [
+        
+
+        {
+            "name": "repeat",
+            "type": "preset",
+            "values": [1,2,3]
+        },
+        {
+            "name": "fc_w_std",
+            "type": "preset",
+            "values": [0.05]
+        },
+        {
+            "name": "fc2_w_std",
+            "type": "preset",
+            "values": [0.1]
+        },
+        {
+            "name": "base_lr",
+            "type": "preset",
+            "values": [1e-3]
+        },
+        {
+            "name": "drop1_prob",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "drop2_prob",
+            "type": "preset",
+            "values": [0.5]
+        },
+        {
+            "name": "drop3_prob",
+            "type": "preset",
+            "values": [0.5]
+        },
+        {
+            "name": "drop4_prob",
+            "type": "preset",
+            "values": [0.5]
+        },
+        {
+            "name": "labeled_batch",
+            "type": "preset",
+            "values": [100]
+        },
+        {
+            "name": "momentum",
+            "type": "preset",
+            "values": [0.99]
+        },
+        {
+            "name": "momentum2",
+            "type": "preset",
+            "values": [0.9]
+        },
+        {
+            "name": "conv_1_num_kernels",
+            "type": "preset",
+            "values": [128]
+        },
+        {
+            "name": "conv_2_num_kernels",
+            "type": "preset",
+            "values": [128]
+        },
+        {
+            "name": "conv_3_num_kernels",
+            "type": "preset",
+            "values": [256]
+        },
+        {
+            "name": "weights1_std",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "weights2_std",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "weights3_std",
+            "type": "preset",
+            "values": [0]
+        },
+        {
+            "name": "weight_decay",
+            "type": "preset",
+            "values": [1e-4]
+        },
+        {
+            "name": "solver_type",
+            "type": "preset",
+            "values": ["Nesterov"]
+        },
+        {
+            "name": "max_iter",
+            "type": "preset",
+            "values": [20000]
+        },
+        {
+            "name": "gamma",
+            "type": "preset",
+            "values": [0.1]
+        }
+    ]
+}
