@@ -15,9 +15,15 @@ def abspath_to_resource(path):
     return os.path.abspath(os.path.join(SCRIPT_DIR, path))
 os.environ['GLOG_minloglevel'] = '2' # Hides Caffe's debug printing...
 # Dynamically load the correct Caffe from our submodule
-#import imp
-#caffe = imp.load_source('caffe', abspath_to_resource('../deps/simnets/python/caffe/__init__.py'))
-import caffe
+def load_caffe():
+    import imp
+    caffe_fp, caffe_pathname, caffe_description = imp.find_module('caffe', [abspath_to_resource('../deps/simnets/python')])
+    try:
+        return imp.load_module('caffe', caffe_fp, caffe_pathname, caffe_description)
+    finally:
+        if caffe_fp:
+            caffe_fp.close()
+caffe = load_caffe()
 
 ######### External Code ##########
 '''
@@ -316,6 +322,13 @@ class ModelAnalyzer(object):
                 batch_masks = np.stack(map(lambda x: caffe.io.load_image(x, color=self._is_color).transpose((2,0,1)), mask[start:(start+batch_size)]))
                 if self._is_color:
                     batch_masks = batch_masks[:, self._channel_swap, :, :]
+                chosen = None
+                m = np.logical_and(batch_masks[:,1,:,:] == 1, batch_masks[:,2,:,:] == 0)
+                (batch_data[:,1,:,:])[m] = (batch_data[:,2,:,:])[m]
+                (batch_masks[:,1,:,:])[m] = (batch_masks[:,2,:,:])[m]
+                m = np.logical_and(batch_masks[:,2,:,:] == 1, batch_masks[:,1,:,:] == 0)
+                (batch_data[:,2,:,:])[m] = (batch_data[:,1,:,:])[m]
+                (batch_masks[:,2,:,:])[m] = (batch_masks[:,1,:,:])[m]
                 batch_data[batch_masks == 1] = np.nan # Missing data will turn into NaN and the rest will stay the same
             self._base_net.blobs['data'].data[...] = batch_data
             probs = self.batch_get_probs(use_normalized)
