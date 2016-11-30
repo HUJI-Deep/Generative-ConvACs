@@ -3,9 +3,9 @@ This experiment checks the missing data classification scheme of inpainting the 
 
 To recreate this experiment, follow these steps:
 
-1. Train Diffusion Probabilistic Model on MNIST as detailed [here](https://github.com/HUJI-Deep/Diffusion-Probabilistic-Models).
+1. Train Diffusion Probabilistic Model on MNIST by running `exp/mnist/dpm/inpaint/train_model.py`.
 
-2. Run `exp/mnist/dpm/inpaint/run.py` to inpaint the missing data datasets (rects and iid noise). This is a computation heavy procedure, you can run the script from multiple machines to speed up the process.
+2. When the DPM has finished training, run `exp/mnist/dpm/inpaint/run.py` to inpaint the missing data datasets (rects and iid noise). This is a computation heavy procedure, you can run the script from multiple machines to speed up the process.
 
 3. Train a CNN classifier for MNIST by running `exp/mnist/lenet/train/run.py` (trained on clean dataset).
 
