@@ -13,6 +13,7 @@ out_*.txt
 __pycache__/
 *.py[cod]
 *$py.class
+*.py~
 
 # C extensions
 *.so
