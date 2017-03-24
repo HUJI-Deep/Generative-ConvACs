@@ -1,0 +1,43 @@
+{
+    "name": "lenet/train",
+    "search_type": "grid",
+    "rendering_engine": true,
+    "termination_rules": {
+      "nan": true
+    },
+    "hyper_params": [
+        {
+            "name": "weight_decay",
+            "type": "preset",
+            "values": [0.0005]
+        },
+        {
+            "name": "base_lr",
+            "type": "preset",
+            "values": [0.01]
+        },
+        {
+            "name": "labeled_batch",
+            "type": "preset",
+            "values": [64]
+        },
+        {
+            "name": "momentum",
+            "type": "preset",
+            "values": [0.9]
+        },
+        {
+            "name": "solver_type",
+            "type": "preset",
+            "values": ["SGD"]
+        },
+        {
+            "name": "max_iter",
+            "type": "preset",
+            "values": [10000]
+        }
+
+
+    ]
+}
+
