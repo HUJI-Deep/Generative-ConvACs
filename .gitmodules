@@ -10,3 +10,9 @@
 [submodule "deps/DPM"]
 	path = deps/DPM
 	url = https://github.com/HUJI-Deep/Diffusion-Probabilistic-Models
+[submodule "deps/spn-poon-2011"]
+	path = deps/spn-poon-2011
+	url = https://github.com/HUJI-Deep/spn-poon-2011
+[submodule "deps/spn-opt-discrim"]
+	path = deps/spn-opt-discrim
+	url = https://github.com/HUJI-Deep/spn-opt-discrim
