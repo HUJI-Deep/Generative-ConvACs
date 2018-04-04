@@ -1,11 +1,11 @@
-# Tractable Generative Convolutional Arithmetic Circuits
-This repository contains the scripts used to reproduce the experiments from the article [Tractable Generative Convolutional Arithmetic Circuits](https://arxiv.org/abs/1610.04167). At the moment some of the experiments are missing, but we will add them in the coming weeks. If you are using this code in your article, or want to reference our results, please cite our article:
+# Tensorial Mixture Models
+This repository contains the scripts used to reproduce the experiments from the article [Tensorial Mixture Models](https://arxiv.org/abs/1610.04167). At the moment some of the experiments are missing, but we will add them in the coming weeks. If you are using this code in your article, or want to reference our results, please cite our article:
 
 ```
 @article{sharir2016GenCAC,
   Author = {Sharir, Or and Tamari, Ronen and Cohen, Nadav and Shashua, Amnon},
   Journal = {arXiv preprint arXiv:1610.04167},
-  Title = {Tractable Generative Convolutional Arithmetic Circuits},
+  Title = {Tensorial Mixture Models},
   Year = {2016}
 }
 ```
